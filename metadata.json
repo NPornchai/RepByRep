@@ -1,0 +1,6 @@
+{
+  "name": "RepByRep",
+  "description": "Every rep counts. Every day matters. A highly polished, responsive workout tracking and consistency development platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
