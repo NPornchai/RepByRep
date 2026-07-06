@@ -24,3 +24,29 @@ from scratch each time.
 **Consequences:** Any agent/session that changes code in this repo must overwrite
 `current-task.md` and `handoff.md` before finishing, and append here only for
 non-obvious trade-offs (not for routine changes).
+
+---
+
+## [2026-07-06] Removed Coach Terminal AI feature — also dropped dotenv and express.json()
+
+**Context:** User asked to remove the "Coach Terminal AI" (Gemini chat) feature
+entirely, not just hide it. This touched `server.ts`'s only JSON-body-parsing route
+and its only `dotenv`-sourced env var (`GEMINI_API_KEY`).
+
+**Decision:** Removed `dotenv`/`dotenv.config()` and `app.use(express.json())` from
+`server.ts` in addition to the Gemini client and `/api/workout-ai` route, rather than
+leaving them in place "just in case." Verified first via grep that no other code
+reads `req.body` or relies on `dotenv`-loaded env vars (`NODE_ENV` and `DISABLE_HMR`
+are read directly from `process.env`, not via `.env`/`dotenv`). Also ran `npm install`
+after editing `package.json` to actually prune `@google/genai`/`dotenv` from
+`node_modules` and resync `package-lock.json`, instead of just editing the manifest.
+
+**Rationale:** Task explicitly said "removed entirely, not just hidden" — leaving
+now-dead middleware/imports around would violate the no-dead-code rule and leave a
+stale lockfile that could confuse the next `npm install`.
+
+**Consequences:** If a future feature needs JSON request bodies or `.env`-file-based
+config again, `express.json()` and `dotenv` will need to be re-added (not still
+present as unused scaffolding). `APP_URL` in `.env.example` was left alone — it was
+already unused by any `process.env.APP_URL` read before this session and is
+unrelated to the AI Coach feature, so it was out of this task's scope.

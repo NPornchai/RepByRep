@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { defaultWorkouts } from "./data/workouts";
 import AnatomicalMannequin from "./components/AnatomicalMannequin";
 import WorkoutDayCard from "./components/WorkoutDayCard";
-import AICoach from "./components/AICoach";
 import { WorkoutDay, Exercise } from "./types";
 import {
   Flame,
@@ -479,9 +478,6 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            {/* AI Assistant Fitness Coach Panel */}
-            <AICoach />
           </div>
         </div>
       </main>

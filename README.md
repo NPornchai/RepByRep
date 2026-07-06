@@ -3,8 +3,8 @@
 **Every rep counts. Every day matters.**
 
 RepByRep is a workout tracking and consistency app. Pick your training split, log
-weight/reps for every set, watch an anatomical mannequin light up the muscles
-you're targeting, and chat with an AI coach for form tips and custom plans.
+weight/reps for every set, and watch an anatomical mannequin light up the muscles
+you're targeting.
 
 ## Features
 
@@ -21,9 +21,6 @@ you're targeting, and chat with an AI coach for form tips and custom plans.
   audio files).
 - **Streak tracking** — counts consecutive days a full workout is completed,
   persisted in `localStorage`.
-- **AI Coach** — chat panel backed by Gemini (`/api/workout-ai`) for form
-  questions, exercise substitutions, and custom workout plans. Falls back to a
-  canned offline response if no API key is configured.
 - **Local persistence** — all workout progress is saved to `localStorage`
   (`repbyrep_workouts_v1`), no backend database required.
 
@@ -31,8 +28,7 @@ you're targeting, and chat with an AI coach for form tips and custom plans.
 
 - **Frontend:** React 19, TypeScript, Vite 6, Tailwind CSS 4, `lucide-react`, `motion`
 - **Backend:** Express 4 (`server.ts`) — serves the app via Vite middleware in dev
-  and static files in production, plus the `/api/workout-ai` and `/api/health` routes
-- **AI:** `@google/genai` (Gemini `gemini-3.5-flash`)
+  and static files in production, plus the `/api/health` route
 
 ## Run locally
 
@@ -42,10 +38,7 @@ you're targeting, and chat with an AI coach for form tips and custom plans.
    ```
    npm install
    ```
-2. Copy `.env.example` to `.env` and set `GEMINI_API_KEY` to your Gemini API key
-   (optional — the app runs fine without it, the AI Coach just falls back to an
-   offline message).
-3. Start the dev server:
+2. Start the dev server:
    ```
    npm run dev
    ```
@@ -64,7 +57,7 @@ you're targeting, and chat with an AI coach for form tips and custom plans.
 ## Project structure
 
 ```
-server.ts                  Express entry — /api/workout-ai, /api/health, Vite wiring
+server.ts                  Express entry — /api/health, Vite wiring
 src/
   main.tsx                 React entry
   App.tsx                  App state: workouts, timer, streak, muscle filter
@@ -74,5 +67,4 @@ src/
     WorkoutDayCard.tsx     Per-exercise set tracker (weight/reps/complete)
     AnatomicalMannequin.tsx SVG muscle-target visualization
     ExerciseIllustration.tsx Per-exercise vector illustrations
-    AICoach.tsx            AI chat panel
 ```

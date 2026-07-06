@@ -24,22 +24,20 @@
 ## Project overview
 
 RepByRep — "Every rep counts. Every day matters." A workout tracking and consistency
-platform: pick a workout day, log sets/reps/weight per exercise, view an anatomical
-muscle-target visualization, and chat with an AI coach (Gemini) for guidance.
-Originally scaffolded via Google AI Studio.
+platform: pick a workout day, log sets/reps/weight per exercise, and view an anatomical
+muscle-target visualization. Originally scaffolded via Google AI Studio.
 
 ## Stack
 
 - **Frontend:** React 19 + TypeScript, Vite 6, Tailwind CSS 4 (`@tailwindcss/vite`), `lucide-react` icons, `motion` for animation
-- **Backend:** Express 4 (`server.ts`) — thin server, mainly proxies AI calls and serves the Vite app / static build
-- **AI:** `@google/genai` (Gemini) — model `gemini-3.5-flash`, called from `/api/workout-ai`
+- **Backend:** Express 4 (`server.ts`) — thin server, serves the Vite app / static build
 - **Build/run:** `npm run dev` (tsx server.ts, Vite middleware mode), `npm run build` (vite build + esbuild bundles server to `dist/server.cjs`), `npm start` (production, serves `dist/`)
 - **Lint/typecheck:** `npm run lint` → `tsc --noEmit` (no test suite configured)
 
 ## Solution structure
 
 ```
-server.ts                  Express entry point — /api/workout-ai, /api/health, Vite middleware wiring
+server.ts                  Express entry point — /api/health, Vite middleware wiring
 src/
   main.tsx                 React entry
   App.tsx                  Top-level app state/layout (~500 lines)
@@ -50,18 +48,13 @@ src/
     WorkoutDayCard.tsx      Workout day selector/card
     AnatomicalMannequin.tsx SVG muscle-target visualization
     ExerciseIllustration.tsx Per-exercise illustrations (large, ~1300 lines)
-    AICoach.tsx             Chat UI calling /api/workout-ai
 ```
 
 ## Hard rules — never violate these
 
 - Do not modify the HMR/watch config in `vite.config.ts` — file watching is
   intentionally disabled when `DISABLE_HMR=true` to prevent flicker during agent edits.
-- `GEMINI_API_KEY` must stay server-side only (read in `server.ts` via `dotenv`) —
-  never expose it to client bundle code.
-- Server always binds `0.0.0.0:3000` and must degrade gracefully (offline-mode
-  canned response) when `GEMINI_API_KEY` is missing — don't make the API key required
-  for the app to boot.
+- Server always binds `0.0.0.0:3000`.
 
 ## Auth & role access
 
