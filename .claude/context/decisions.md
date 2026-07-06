@@ -50,3 +50,40 @@ config again, `express.json()` and `dotenv` will need to be re-added (not still
 present as unused scaffolding). `APP_URL` in `.env.example` was left alone — it was
 already unused by any `process.env.APP_URL` read before this session and is
 unrelated to the AI Coach feature, so it was out of this task's scope.
+
+---
+
+## [2026-07-06] Added Supabase scaffolding — persistence abstraction with required localStorage fallback, no live project yet
+
+**Context:** User asked to add Supabase scaffolding and refactor workout
+history/streak persistence to use it, but explicitly: no live Supabase project
+exists, no auth is allowed, and the app must work identically to today via
+`localStorage` when the two `VITE_SUPABASE_*` env vars are absent.
+
+**Decision:** Built `src/services/workoutStorage.ts` as a persistence abstraction
+with an async Supabase-or-localStorage branch per operation, plus **synchronous**
+`loadWorkoutsSync()`/`loadStreakSync()` helpers used only for `App.tsx`'s initial
+`useState` when Supabase isn't configured (so the no-Supabase first render has zero
+timing/behavior change vs. before). Added an `isHydrated` guard state so the
+save-on-change effect can't fire with default/placeholder data and clobber real
+Supabase rows before the one-time async hydration effect resolves. Also changed the
+day-completion/streak-guard key from array index (`selectedDayIndex`) to the stable
+`day.id`, in both the new Supabase table and the localStorage fallback path.
+
+**Rationale:** Index-based keys are fragile for a database schema (workout array
+order is an implementation detail, not a stable identifier) — needed one coherent
+key across both backends. The sync/async split for the localStorage path was
+necessary to satisfy "must keep working exactly as it does today" literally (no
+flash-of-default-data regression), since Supabase reads are unavoidably async but
+localStorage reads never were.
+
+**Consequences:** Any real localStorage data previously stored under the old
+`repbyrep_day_comp_last_<index>` keys will not be picked up under the new
+`repbyrep_day_comp_last_<day-id>` keys (harmless — worst case a streak
+re-increments once instead of being blocked as "already completed today"; no known
+real user data exists yet). The Supabase-configured code path has never executed
+against a live database (none exists) — it is unit-reasoned/type-checked only, not
+live-tested; must be smoke-tested end-to-end the first time a real Supabase project
+and credentials exist. `UserWorkoutHistory` in `src/types.ts` remains unused/dead —
+confirmed via grep it's never referenced, so it was deliberately excluded from the
+new schema rather than guessed into a table.

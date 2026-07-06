@@ -19,16 +19,21 @@ you're targeting.
 - **Rest timer** — quick 45s/60s/90s interval timer that auto-starts when a set is
   completed, with an audio beep on finish (synthesized via Web Audio API, no
   audio files).
-- **Streak tracking** — counts consecutive days a full workout is completed,
-  persisted in `localStorage`.
-- **Local persistence** — all workout progress is saved to `localStorage`
-  (`repbyrep_workouts_v1`), no backend database required.
+- **Streak tracking** — counts consecutive days a full workout is completed.
+- **Local persistence with optional Supabase sync** — workout set logs (weight,
+  reps, completed) and the streak counter are saved via
+  `src/services/workoutStorage.ts`: to `localStorage` by default (no backend
+  database required), or to Supabase when the project is configured (see
+  "Run locally" below). No login is required either way — Supabase rows are
+  keyed by a client-generated anonymous ID, not an authenticated user.
 
 ## Tech stack
 
 - **Frontend:** React 19, TypeScript, Vite 6, Tailwind CSS 4, `lucide-react`, `motion`
 - **Backend:** Express 4 (`server.ts`) — serves the app via Vite middleware in dev
   and static files in production, plus the `/api/health` route
+- **Data:** `localStorage` by default; optional Supabase (`@supabase/supabase-js`)
+  for workout history/streak persistence
 
 ## Run locally
 
@@ -38,7 +43,12 @@ you're targeting.
    ```
    npm install
    ```
-2. Start the dev server:
+2. (Optional) Configure Supabase. Copy `.env.example` to `.env` and set
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to your Supabase project's
+   URL and anon key, then apply `supabase/migrations/` to that project. **This
+   step is entirely optional** — if these two vars are left unset, the app
+   works exactly the same and persists workout data to `localStorage` instead.
+3. Start the dev server:
    ```
    npm run dev
    ```
@@ -58,11 +68,14 @@ you're targeting.
 
 ```
 server.ts                  Express entry — /api/health, Vite wiring
+supabase/migrations/       SQL schema for optional Supabase-backed persistence
 src/
   main.tsx                 React entry
   App.tsx                  App state: workouts, timer, streak, muscle filter
   types.ts                 WorkoutSet / Exercise / WorkoutDay / UserWorkoutHistory
   data/workouts.ts         5-day workout split data
+  lib/supabaseClient.ts    Supabase client (null when not configured)
+  services/workoutStorage.ts Persistence abstraction: Supabase when configured, localStorage otherwise
   components/
     WorkoutDayCard.tsx     Per-exercise set tracker (weight/reps/complete)
     AnatomicalMannequin.tsx SVG muscle-target visualization

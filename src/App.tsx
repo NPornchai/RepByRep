@@ -3,6 +3,17 @@ import { defaultWorkouts } from "./data/workouts";
 import AnatomicalMannequin from "./components/AnatomicalMannequin";
 import WorkoutDayCard from "./components/WorkoutDayCard";
 import { WorkoutDay, Exercise } from "./types";
+import { isSupabaseConfigured } from "./lib/supabaseClient";
+import {
+  loadWorkouts,
+  loadWorkoutsSync,
+  loadStreak,
+  loadStreakSync,
+  saveWorkouts,
+  saveStreak,
+  getDayLastCompleted,
+  setDayLastCompleted,
+} from "./services/workoutStorage";
 import {
   Flame,
   Timer,
@@ -19,24 +30,23 @@ import {
 } from "lucide-react";
 
 export default function App() {
-  // Load state from localStorage or fallback to default
-  const [workouts, setWorkouts] = useState<WorkoutDay[]>(() => {
-    const saved = localStorage.getItem("repbyrep_workouts_v1");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Failed to parse saved workouts", e);
-      }
-    }
-    return defaultWorkouts;
-  });
+  // Load state from Supabase (if configured) or fallback to localStorage.
+  // When Supabase isn't configured, load synchronously from localStorage so the
+  // first render is identical to the pre-Supabase behavior (no data flash).
+  // When it IS configured, start from defaults and hydrate asynchronously below.
+  const [workouts, setWorkouts] = useState<WorkoutDay[]>(() =>
+    isSupabaseConfigured ? defaultWorkouts : loadWorkoutsSync()
+  );
 
   const [selectedDayIndex, setSelectedDayIndex] = useState<number>(0);
-  const [streakCount, setStreakCount] = useState<number>(() => {
-    return parseInt(localStorage.getItem("repbyrep_streak") || "4") || 4; // default streak 4
-  });
-  
+  const [streakCount, setStreakCount] = useState<number>(() =>
+    isSupabaseConfigured ? 4 : loadStreakSync() // default streak 4
+  );
+
+  // Guards the persistence effect below so it never writes the pre-hydration
+  // default state back over real Supabase data before the async load resolves.
+  const [isHydrated, setIsHydrated] = useState<boolean>(!isSupabaseConfigured);
+
   const [selectedMuscleFilter, setSelectedMuscleFilter] = useState<string | null>(null);
 
   // Timer States
@@ -45,10 +55,34 @@ export default function App() {
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
-  // Sync state to localStorage
+  // One-time async hydration from Supabase when configured (no-op otherwise,
+  // since the localStorage case already hydrated synchronously above).
   useEffect(() => {
-    localStorage.setItem("repbyrep_workouts_v1", JSON.stringify(workouts));
-  }, [workouts]);
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [loadedWorkouts, loadedStreak] = await Promise.all([loadWorkouts(), loadStreak()]);
+        if (!cancelled) {
+          setWorkouts(loadedWorkouts);
+          setStreakCount(loadedStreak);
+        }
+      } catch (e) {
+        console.error("Failed to load workout data from Supabase", e);
+      } finally {
+        if (!cancelled) setIsHydrated(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Sync workout set logs to Supabase or localStorage (see workoutStorage.ts)
+  useEffect(() => {
+    if (!isHydrated) return;
+    saveWorkouts(workouts).catch((e) => console.error("Failed to save workout sets", e));
+  }, [workouts, isHydrated]);
 
   // Rest Timer ticking interval logic
   useEffect(() => {
@@ -207,24 +241,34 @@ export default function App() {
     : 0;
 
   const isDayFullyCompleted = totalSetsThisDay > 0 && totalSetsCompletedThisDay === totalSetsThisDay;
+  const activeDayId = activeDay?.id;
 
   // Track the user streak on day completion
   useEffect(() => {
-    if (isDayFullyCompleted) {
-      const lastCompletedKey = `repbyrep_day_comp_last_${selectedDayIndex}`;
-      const lastLogged = localStorage.getItem(lastCompletedKey);
-      const todayString = new Date().toDateString();
-      
-      if (lastLogged !== todayString) {
-        localStorage.setItem(lastCompletedKey, todayString);
+    if (!isDayFullyCompleted || !activeDayId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const todayString = new Date().toDateString();
+        const lastLogged = await getDayLastCompleted(activeDayId);
+        if (cancelled || lastLogged === todayString) return;
+
+        await setDayLastCompleted(activeDayId, todayString);
+        if (cancelled) return;
+
         setStreakCount((prev) => {
           const next = prev + 1;
-          localStorage.setItem("repbyrep_streak", next.toString());
+          saveStreak(next).catch((e) => console.error("Failed to save streak", e));
           return next;
         });
+      } catch (e) {
+        console.error("Failed to update day completion / streak", e);
       }
-    }
-  }, [isDayFullyCompleted, selectedDayIndex]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isDayFullyCompleted, activeDayId]);
 
   const handleMuscleClickFromMannequin = (muscle: string) => {
     if (selectedMuscleFilter && selectedMuscleFilter.toLowerCase() === muscle.toLowerCase()) {

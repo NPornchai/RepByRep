@@ -16,33 +16,51 @@
 
 ## Status: Ready to start
 
+> ⚠️ **Supabase is NOT connected yet.** Only scaffolding exists (client module,
+> persistence abstraction, SQL migration). No real Supabase project/credentials
+> exist. The app runs entirely on the `localStorage` fallback path today — do not
+> assume the Supabase code path has ever executed against a real database.
+
 ---
 
 ## Next task — (none assigned yet)
 
 **Size:** —
-**Goal:** All prior uncommitted work (context-files bootstrap, README rewrite, favicon/title
-addition, Coach Terminal AI removal) has been consolidated into a single commit. Next
-session should pick up whatever the user asks for and fill this section in.
+**Goal:** Supabase scaffolding for workout history/streak persistence is done (see
+`handoff.md` for full detail), but it is scaffolding only — no live Supabase project
+exists, so the app is still running on `localStorage` in practice. Next session
+should pick up whatever the user asks for and fill this section in.
 
 ### What's already done
-- Context-files system bootstrapped (`CLAUDE.md`, `current-task.md`, `handoff.md`, `decisions.md`)
-- Rewrote `README.md` — replaced AI Studio boilerplate with real project docs
-- Added app title + favicon: `index.html` `<title>` set to "RepByRep" and
-  `<link rel="icon">` added; `public/favicon.svg` created (maroon tile, cream dumbbell,
-  matches app brand colors) — verified serving correctly from dev server
-- Removed the Coach Terminal AI feature entirely: `src/components/AICoach.tsx` deleted,
-  `App.tsx` import/render removed, `server.ts` Gemini wiring + `/api/workout-ai` route +
-  `dotenv`/`express.json()` removed, `@google/genai`/`dotenv` dropped from `package.json`
-  (with `npm install` run to sync `node_modules`/`package-lock.json`), `GEMINI_API_KEY`
-  removed from `.env.example`, and `README.md`/`CLAUDE.md` updated accordingly.
-  `npm run lint` (`tsc --noEmit`) passes clean.
-- Committed all of the above (context bootstrap + README rewrite + favicon + AI
-  removal) in one consolidated commit, including `package-lock.json` which was
-  previously untracked in git.
+- Added `@supabase/supabase-js` dependency (`npm install` run, `package-lock.json` synced).
+- `src/lib/supabaseClient.ts` — constructs a Supabase client only when
+  `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` are both set; exports
+  `isSupabaseConfigured` and a nullable `supabase` client.
+- `src/services/workoutStorage.ts` — persistence abstraction: reads/writes
+  workout set logs, streak, and per-day last-completed date via Supabase when
+  configured, transparently falling back to the existing `localStorage` keys
+  otherwise. Real Supabase errors are thrown (not swallowed); the "not
+  configured" case is a silent, expected fallback.
+- `supabase/migrations/20260706000000_workout_history.sql` — new migration:
+  `workout_set_logs`, `workout_streaks`, `workout_day_completions` tables, all
+  keyed by client-generated `client_id` (no auth FK).
+- `src/vite-env.d.ts` — added so `import.meta.env.VITE_SUPABASE_*` type-checks.
+- Refactored `src/App.tsx` to load/save through the new persistence layer
+  instead of calling `localStorage` directly; added a hydration guard so an
+  async Supabase load can't be clobbered by the save effect before it resolves.
+- Updated `.env.example`, `README.md`, `CLAUDE.md` to document the two new
+  optional env vars and the new files/folder.
+- `npm run lint` (`tsc --noEmit`) passes clean. Verified via `npm run dev` +
+  `curl` that the app still serves correctly and Vite transforms the new
+  modules without error (no live Supabase project exists to test against —
+  none was created, per the task's explicit instruction).
 
 ### What needs to be done
-- Awaiting next user request
+- Awaiting next user request. If/when a real Supabase project is created, the
+  next session should apply `supabase/migrations/` to it and smoke-test the
+  Supabase-configured code path end-to-end (currently only localStorage-path
+  and Vite-transform verified — the Supabase branch is unit-reasoned, not
+  live-tested, since no project exists yet).
 
 ### Implementation notes
 - (none yet)
@@ -54,3 +72,4 @@ session should pick up whatever the user asks for and fill this section in.
 | Item | Reason deferred |
 |---|---|
 | Clean up `metadata.json`'s `MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API` capability flag | Out of scope for the AI Coach removal task — it's AI Studio platform metadata, not app code; flagged in handoff.md 2026-07-06 |
+| Live-test the Supabase-configured code path | No real Supabase project exists yet — scaffolding only, per explicit task instruction not to invent/hardcode real credentials; flagged 2026-07-06 |

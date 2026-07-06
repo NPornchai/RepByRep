@@ -31,6 +31,7 @@ muscle-target visualization. Originally scaffolded via Google AI Studio.
 
 - **Frontend:** React 19 + TypeScript, Vite 6, Tailwind CSS 4 (`@tailwindcss/vite`), `lucide-react` icons, `motion` for animation
 - **Backend:** Express 4 (`server.ts`) — thin server, serves the Vite app / static build
+- **Data:** `@supabase/supabase-js` (optional) for workout history/streak persistence, falls back to `localStorage` when unconfigured — see `src/services/workoutStorage.ts`
 - **Build/run:** `npm run dev` (tsx server.ts, Vite middleware mode), `npm run build` (vite build + esbuild bundles server to `dist/server.cjs`), `npm start` (production, serves `dist/`)
 - **Lint/typecheck:** `npm run lint` → `tsc --noEmit` (no test suite configured)
 
@@ -38,12 +39,15 @@ muscle-target visualization. Originally scaffolded via Google AI Studio.
 
 ```
 server.ts                  Express entry point — /api/health, Vite middleware wiring
+supabase/migrations/       SQL schema for optional Supabase-backed persistence (client_id-keyed, no auth)
 src/
   main.tsx                 React entry
   App.tsx                  Top-level app state/layout (~500 lines)
   index.css                Tailwind entry
   types.ts                 WorkoutSet / Exercise / WorkoutDay / UserWorkoutHistory
-  data/workouts.ts          Static workout day/exercise data (~490 lines)
+  data/workouts.ts          Static workout day/exercise data (~490 lines) — never persisted to Supabase
+  lib/supabaseClient.ts     Supabase client + isSupabaseConfigured (null client when env vars absent)
+  services/workoutStorage.ts Persistence abstraction: Supabase when configured, localStorage fallback otherwise
   components/
     WorkoutDayCard.tsx      Workout day selector/card
     AnatomicalMannequin.tsx SVG muscle-target visualization
@@ -58,7 +62,10 @@ src/
 
 ## Auth & role access
 
-None — no authentication system in this project.
+None — no authentication system in this project. When Supabase is configured, rows
+are scoped by a client-generated anonymous UUID (`repbyrep_client_id` in
+`localStorage`), not an authenticated user — do not add login/Supabase Auth without
+a dedicated task.
 
 ## Known deferred items — do not fix without a dedicated task
 
